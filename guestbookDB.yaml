@@ -1,0 +1,39 @@
+Description:  This template creates DB instance located in private subnet.
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Default: GuestbookVPC
+
+Resources:
+  guestbookDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: DBinstance
+      DBName: guestbookDB
+      VPCSecurityGroups:
+      - Fn::ImportValue:
+          !Sub ${NetworkStackName}-DBSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      AllocatedStorage: '50'
+      DBInstanceClass: db.t3.micro
+      Engine: MySQL
+      MasterUsername: admin #db username
+      MasterUserPassword: Guestbook #db pass
+    DeletionPolicy: Snapshot
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Subnet Group For DB instance
+      DBSubnetGroupName: DBSubnetGroup
+      SubnetIds: 
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-PrivateSub1
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-PrivateSub2
+
+Outputs:
+  guestbookDB:
+    Description: Guestbook DB instance
+    Value: !Ref guestbookDB

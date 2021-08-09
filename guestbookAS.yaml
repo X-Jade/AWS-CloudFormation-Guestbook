@@ -1,0 +1,92 @@
+# AWSTemplateFormatVersion: 2010-09-09
+Description:  This template creates autoscaling group that deploys ec2 instances in two AZ.
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Default: GuestbookVPC
+#   AMI:
+#     Type: String
+#   Subnets:
+#     Type: CommaDelimitedList
+#   VPC:
+#     Type: String
+#   CPUPolicyTargetValue:
+#     Type: String
+#   ALBRequestCountTargetValue:
+#     Type: String
+Resources:
+  guestbookLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: guestbookELB
+      Scheme: internet-facing
+      Subnets: 
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-PublicSub1
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-PublicSub2
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-ELBSecurityGroup
+
+  guestbookLoadBalancerListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref guestbookTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref guestbookLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  guestbookTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Name: guestbookTargetGroup
+      Port: 80
+      Protocol: HTTP
+      VpcId: #vpcID dari yg dibuat
+        Fn::ImportValue:
+          !Sub ${NetworkStackName}-vpcID
+
+  guestbookASConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-0f34f7240f400c678 #img id dari AMI
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-WebSecurityGroup
+      # - Ref: logicalName
+      # - web-sg
+      InstanceType: t3.micro
+
+  guestbookASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: #subnet ID
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-PublicSub1
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-PublicSub2            
+      LaunchConfigurationName: !Ref guestbookASConfig
+      MinSize: '2'
+      MaxSize: '4'
+      DesiredCapacity: '2'
+      TargetGroupARNs:
+        - !Ref guestbookTargetGroup
+
+  CPUPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref guestbookASG
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 50
+
+Outputs:
+  guestbookLoadBalancer:
+    Description: Load balancer guestbook
+    Value: !Ref guestbookLoadBalancer
