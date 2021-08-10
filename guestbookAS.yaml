@@ -5,6 +5,15 @@ Parameters:
   NetworkStackName:
     Type: String
     Default: GuestbookVPC
+  
+  databaseStackName:
+    Type: String
+    Default: GuestbookDB
+
+  # dbHostname:
+  #   Type: String
+  #   Default:
+      
 #   AMI:
 #     Type: String
 #   Subnets:
@@ -53,13 +62,26 @@ Resources:
   guestbookASConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: ami-0f34f7240f400c678 #img id dari AMI
+      ImageId: ami-052f60969f4a5d6c1 #img id dari AMI
       SecurityGroups:
         - Fn::ImportValue:
             !Sub ${NetworkStackName}-WebSecurityGroup
       # - Ref: logicalName
       # - web-sg
       InstanceType: t3.micro
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            sed -i.bak -e 's/host.*/host=${dbhostname}/' ~/../var/www/html/AWS-PBL-Guestbook/database/db_params.ini
+            sed -i.bak -e 's/user.*/user=admin/' ~/../var/www/html/AWS-PBL-Guestbook/database/db_params.ini
+            sed -i.bak -e 's/password.*/password=Guestbook/' ~/../var/www/html/AWS-PBL-Guestbook/database/db_params.ini
+            sed -i.bak -e 's/dbname.*/dbname=guestbookDB/' ~/../var/www/html/AWS-PBL-Guestbook/database/db_params.ini
+            cd ~/../..
+            mysql -u admin --password=Guestbook -h ${dbhostname} < var/www/html/AWS-PBL-Guestbook/database/guestbook.sql
+          - dbhostname  : 
+              Fn::ImportValue:
+                !Sub ${databaseStackName}-guestbookDBHostname
 
   guestbookASG:
     Type: AWS::AutoScaling::AutoScalingGroup

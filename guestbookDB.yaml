@@ -18,6 +18,7 @@ Resources:
       AllocatedStorage: '50'
       DBInstanceClass: db.t3.micro
       Engine: MySQL
+      EngineVersion: 5.7
       MasterUsername: admin #db username
       MasterUserPassword: Guestbook #db pass
     DeletionPolicy: Snapshot
@@ -37,3 +38,9 @@ Outputs:
   guestbookDB:
     Description: Guestbook DB instance
     Value: !Ref guestbookDB
+    
+  guestbookDBHostname:
+    Description: "DB Instance Hostname"
+    Value: !GetAtt guestbookDB.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-guestbookDBHostname'
