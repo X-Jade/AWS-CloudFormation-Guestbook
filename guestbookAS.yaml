@@ -58,6 +58,11 @@ Resources:
       VpcId: #vpcID dari yg dibuat
         Fn::ImportValue:
           !Sub ${NetworkStackName}-vpcID
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: true
+        - Key: stickiness.type
+          Value: lb_cookie
 
   guestbookASConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
