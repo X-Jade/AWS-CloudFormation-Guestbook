@@ -10,6 +10,8 @@ Parameters:
     Type: String
     Default: GuestbookDB
 
+  
+
   # dbHostname:
   #   Type: String
   #   Default:
@@ -59,15 +61,15 @@ Resources:
         Fn::ImportValue:
           !Sub ${NetworkStackName}-vpcID
       TargetGroupAttributes:
-        - Key: stickiness.enabled
-          Value: true
-        - Key: stickiness.type
-          Value: lb_cookie
+      - Key: stickiness.enabled
+        Value: true
+      - Key: stickiness.lb_cookie.duration_seconds
+        Value: 86500
 
   guestbookASConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: ami-0b9a83ff3d0e41842 #img id dari AMI
+      ImageId: ami-05dc3394926f77227 #img id dari AMI
       SecurityGroups:
         - Fn::ImportValue:
             !Sub ${NetworkStackName}-WebSecurityGroup
@@ -82,11 +84,20 @@ Resources:
             sed -i.bak -e 's/user.*/user=admin/' ~/../var/www/html/AWS-PBL-Guestbook/database/db_params.ini
             sed -i.bak -e 's/password.*/password=Guestbook/' ~/../var/www/html/AWS-PBL-Guestbook/database/db_params.ini
             sed -i.bak -e 's/dbname.*/dbname=guestbookDB/' ~/../var/www/html/AWS-PBL-Guestbook/database/db_params.ini
+            sed -i.bak -e 's/login.*/login=https://alpacagb.auth.us-west-2.amazoncognito.com/login?client_id=4fkfahl6380ek2ssqr591ntoge&response_type=token&scope=email+openid+profile&redirect_uri=https://guestbookELB-1363989527.us-west-2.elb.amazonaws.com/home.php/' ~/../var/www/html/AWS-PBL-Guestbook/param.ini
+            sed -i.bak -e 's/signup.*/signup=https://alpacagb.auth.us-west-2.amazoncognito.com/signup?client_id=4fkfahl6380ek2ssqr591ntoge&response_type=token&scope=email+openid+profile&redirect_uri=https://guestbookELB-1363989527.us-west-2.elb.amazonaws.com/home.php/' ~/../var/www/html/AWS-PBL-Guestbook/param.ini
             cd ~/../..
             mysql -u admin --password=Guestbook -h ${dbhostname} < var/www/html/AWS-PBL-Guestbook/database/guestbook.sql
           - dbhostname  : 
               Fn::ImportValue:
                 !Sub ${databaseStackName}-guestbookDBHostname
+          # - linklogin:
+          #     !Join
+          #       - ''
+          #       - - 'https://alpacagb'
+          #         - !GetAtt userPoolDomain.Domain
+          #         - '/home.php'
+      ClientName: guestbook-app-client 
 
   guestbookASG:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -113,7 +124,60 @@ Resources:
           PredefinedMetricType: ASGAverageCPUUtilization
         TargetValue: 50
 
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: alpacaUserPool
+    
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties: 
+      AllowedOAuthFlows:
+        - implicit
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes: 
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - !Join
+          - ''
+          - - 'https://'
+            - !GetAtt guestbookLoadBalancer.DNSName
+            - '/home.php'
+      ClientName: guestbook-app-client
+      SupportedIdentityProviders:
+        - COGNITO
+      UserPoolId: !Ref UserPool
+  
+  userPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties: 
+      Domain: alpacagb
+      UserPoolId: !Ref UserPool
+
 Outputs:
   guestbookLoadBalancer:
     Description: Load balancer guestbook
     Value: !Ref guestbookLoadBalancer
+
+  guestbookELBHostName:
+    Description: 'Load Balancer Hostname'
+    Value:
+      !GetAtt guestbookLoadBalancer.DNSName
+
+  UserPoolId:
+    Value: !Ref UserPool
+    Export:
+      Name: "UserPool::Id"
+
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+    Export:
+      Name: "UserPoolClient::Id"
+
+  userPoolDomain:
+    Description: 'user pool domain'
+    Value:
+      !GetAtt userPoolDomain.Domain
+  
