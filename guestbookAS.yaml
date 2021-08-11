@@ -91,14 +91,7 @@ Resources:
           - dbhostname  : 
               Fn::ImportValue:
                 !Sub ${databaseStackName}-guestbookDBHostname
-          # - linklogin:
-          #     !Join
-          #       - ''
-          #       - - 'https://alpacagb'
-          #         - !GetAtt userPoolDomain.Domain
-          #         - '/home.php'
-      ClientName: guestbook-app-client 
-
+                
   guestbookASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
