@@ -14,7 +14,7 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                echo 'Deploying....'
+                echo 'Deployingg....'
                 sh "aws cloudformation update stack --stack-name appStack --template-body file://guestbookAS.yaml --region 'us-west-2'"
             }
         }
