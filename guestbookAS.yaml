@@ -69,7 +69,7 @@ Resources:
   guestbookASConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: ami-05dc3394926f77227 #img id dari AMI
+      ImageId: ami-052d4950cfc88c5e0 #img id dari AMI
       SecurityGroups:
         - Fn::ImportValue:
             !Sub ${NetworkStackName}-WebSecurityGroup
